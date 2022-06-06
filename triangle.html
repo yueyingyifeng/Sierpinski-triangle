@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title></title>
+		<style type="text/css">
+			.continer {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+
+				margin-top: 10%;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="continer">
+			<canvas id="game" width="500" height="500"></canvas>
+			<button id="next">画出下一个点</button>
+		</div>
+
+		<script type="text/javascript">
+			var canvas = document.getElementById('game');
+			var next = document.getElementById("next");
+			var ctx = canvas.getContext('2d');
+			const fix = 1; //保留小数点后一位
+			var pointSize = 1;//点的大小
+			//坐标工厂
+			function Point(x, y) {
+				if (x == null) {
+					x = -1;
+				}
+				if (y == null) {
+					y = -1;
+				}
+				return {
+					x,
+					y,
+					toString() {
+						return '[' + x + ',' + y + ']'
+					}
+				};
+			}
+			//斜率计算
+			function K(p1, p2) {
+				if (p1 == null) {
+					console.log("计算斜率需要两个坐标-缺少p1");
+					return;
+				}
+				if (p2 == null) {
+					console.log("计算斜率需要两个坐标-缺少p2");
+					return;
+				}
+				return ((p2.y - p1.y) / (p2.x - p1.x)).toFixed(fix);
+			}
+			//----------------------------------------------------------------------------//
+			//等边三角形的默认三个点
+			var defaultPoint = {
+				top: function() {
+					return new Point(250, 20);
+				},
+				height: 320,
+				left: function() {
+					return new Point(
+						(this.top().x - (Math.sqrt(3) * this.height / 3)).toFixed(fix),
+						this.top().y + this.height
+					);
+				},
+				right: function() {
+					return new Point(
+						(this.top().x + (Math.sqrt(3) * this.height / 3)).toFixed(fix),
+						this.top().y + this.height
+					);
+				},
+				toString() {
+					return "{\n" + 't[' + this.top().x + "," + this.top().y + ']' + "\n" +
+						'r[' + this.right().x + "," + this.right().y + ']' + '\n' +
+						'l[' + this.left().x + "," + this.left().y + ']' + '\n' + '}';
+				}
+			}
+			//初始化函数
+			function init(){
+				ctx.fillStyle = '#23a0ff';
+				//ctx.strokeRect(0, 0, 300, 300); //边框
+				ctx.fillRect(defaultPoint.top().x, defaultPoint.top().y, pointSize, pointSize);
+				ctx.fillRect(defaultPoint.left().x, defaultPoint.left().y, pointSize, pointSize);
+				ctx.fillRect(defaultPoint.right().x, defaultPoint.right().y, pointSize, pointSize);
+				
+				//ctx.strokeText('t', defaultPoint.top().x, defaultPoint.top().y - 5); //点1位置
+				//ctx.strokeText('l', defaultPoint.left().x, defaultPoint.left().y + 15); //点2位置
+				//ctx.strokeText('r', defaultPoint.right().x, defaultPoint.right().y + 15); //点3位置
+				
+			}
+			
+			//生成从minNum到maxNum的随机数
+			function randomNum(x, y) {
+				return Math.round(Math.random()*(Number(y)-Number(x))+Number(x));
+			}
+
+			//在此直线中放一个点，参数是两个点——由此两点得出的直线函数
+			function putPointOnLineByRandom(p1, p2) {
+				//直线范围:|p1.x| -- |p2.x|
+				//两点式: (y - y1) / (y2 - y1) = (x - x1) / (x2 - x1)
+				//一般式: 0 = (x - x1) / (x2 - x1) - (y - y1) / (y2 - y1)
+				//点斜式: (y - y1) = k(x - x1)
+				//一般式: 0 = k(x - x1) - (y - y1)
+				let rx;
+				//生成随机20
+				rx = randomNum(p1.x, p2.x);
+
+				let k = K(p1, p2); //算出斜率
+				let b =  p1.y -k * p1.x ; //寻找B
+
+				//let y = k*(rx)-p1.y + b
+				let y = k * rx + b;
+				ctx.fillRect(rx, y, pointSize, pointSize);
+				return new Point(rx, y);
+			}
+			//在两点构成的线中的中点画一个点
+			function putPointOnLineMid(p1,p2){
+				let x = (Number(p1.x)+Number(p2.x))/2.0;
+				let y = (Number(p1.y)+Number(p2.y))/2.0;
+				ctx.fillRect(x, y, pointSize, pointSize);
+				return new Point(x,y);
+			}
+			//保存三个边的符号，方便随机挑一个
+			let sides = ['a','b','c'];
+			//随机在side边上放一个点
+			function put(side) {
+				//l->t的为a边
+				//t->r的为b边
+				//r->l的为c边
+				switch (side) {
+					case 'a':
+					return putPointOnLineByRandom(defaultPoint.left(), defaultPoint.top());
+						break;
+					case 'b':
+					return putPointOnLineByRandom(defaultPoint.top(), defaultPoint.right());
+						break;
+					case 'c':
+					return putPointOnLineByRandom(defaultPoint.left(), defaultPoint.right());
+						break;
+				}
+			}
+			//保存上一次画的点
+			let lastPoint;
+			//画出第一个点在此三角形的某一边中
+			function putFirst(){
+				lastPoint = put(sides[randomNum(0,2)]);
+			}
+			//初始化等边三角形的三个点
+			init();
+			//画出第一个点在此三角形的某一边中
+			putFirst();
+			//保存三个点的坐标，方便随机挑
+			let dpt = [
+				new Point(defaultPoint.top().x,defaultPoint.top().y),
+				new Point(defaultPoint.left().x,defaultPoint.left().y),
+				new Point(defaultPoint.right().x,defaultPoint.right().y),
+			]
+			//最终执行
+			function excute() {
+				let chose = randomNum(0,2);
+				let target = dpt[chose];
+				lastPoint = putPointOnLineMid(lastPoint,target);
+			}
+			//手动画，亲自体验（不保证鼠标不会被点坏）
+			next.onclick = function(){
+				excute();
+			};
+			//自动执行
+			function aotu(){
+				for(let n = 0;n<100000;n++){
+					setTimeout(() => {
+						excute();
+					}, 1500);
+				}
+			}
+			aotu();
+		</script>
+	</body>
+</html>
